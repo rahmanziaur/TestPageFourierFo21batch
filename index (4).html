@@ -1,0 +1,1321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Fourier Transform — Image Signal Processing</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Share+Tech+Mono&family=Exo+2:ital,wght@0,300;0,400;0,600;1,300&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --cyan:    #00f5ff;
+      --magenta: #ff00aa;
+      --electric:#7b2fff;
+      --gold:    #ffd700;
+      --bg:      #020810;
+      --bg2:     #050d1a;
+      --bg3:     #081428;
+      --text:    #c8e0ff;
+      --text-dim:#5a7fa0;
+      --border:  rgba(0,245,255,0.15);
+      --glow:    0 0 20px rgba(0,245,255,0.4);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Exo 2', sans-serif;
+      overflow-x: hidden;
+    }
+
+    /* ── SCROLLBAR ── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg2); }
+    ::-webkit-scrollbar-thumb { background: var(--cyan); border-radius: 3px; }
+
+    /* ── NAV ── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 999;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 2rem; height: 60px;
+      background: rgba(2,8,16,0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+    nav .logo {
+      font-family: 'Orbitron', monospace;
+      font-weight: 900; font-size: .85rem;
+      color: var(--cyan);
+      letter-spacing: 2px;
+      text-shadow: var(--glow);
+    }
+    nav ul { list-style: none; display: flex; gap: 1.6rem; }
+    nav a {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: .78rem; color: var(--text-dim);
+      text-decoration: none; letter-spacing: 1px;
+      transition: color .3s;
+    }
+    nav a:hover { color: var(--cyan); }
+
+    /* ── HERO ── */
+    .hero {
+      position: relative; min-height: 100vh;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      overflow: hidden; padding-top: 60px;
+    }
+    .hero-bg {
+      position: absolute; inset: 0;
+      background: url('https://raw.githubusercontent.com/rahmanziaur/TestPageFourierFo21batch/main/tt22.jpg')
+                  center/cover no-repeat;
+      filter: brightness(.35) saturate(1.2);
+      transform: scale(1.04);
+      transition: transform 8s ease;
+    }
+    .hero-bg.parallax-ready { transform: scale(1); }
+    .hero-overlay {
+      position: absolute; inset: 0;
+      background: linear-gradient(
+        180deg,
+        rgba(2,8,16,0.2) 0%,
+        rgba(2,8,16,0.0) 40%,
+        rgba(2,8,16,0.7) 75%,
+        rgba(2,8,16,1)   100%
+      );
+    }
+    #hero-canvas {
+      position: absolute; inset: 0;
+      opacity: .55; pointer-events: none;
+    }
+    .hero-content {
+      position: relative; text-align: center;
+      padding: 2rem;
+    }
+    .hero-badge {
+      display: inline-block;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: .72rem; letter-spacing: 3px;
+      color: var(--magenta);
+      border: 1px solid var(--magenta);
+      padding: .3rem 1rem; border-radius: 2px;
+      margin-bottom: 1.6rem;
+      text-transform: uppercase;
+      animation: pulse-badge 2s infinite alternate;
+    }
+    @keyframes pulse-badge {
+      from { box-shadow: 0 0 6px rgba(255,0,170,.3); }
+      to   { box-shadow: 0 0 18px rgba(255,0,170,.7); }
+    }
+    .hero h1 {
+      font-family: 'Orbitron', monospace;
+      font-weight: 900;
+      font-size: clamp(2rem, 6vw, 4.5rem);
+      line-height: 1.1;
+      letter-spacing: -1px;
+      background: linear-gradient(135deg, var(--cyan) 0%, #fff 50%, var(--magenta) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-shadow: none;
+      margin-bottom: 1rem;
+    }
+    .hero-sub {
+      font-size: clamp(1rem, 2.5vw, 1.3rem);
+      font-weight: 300; color: #90b8d8;
+      max-width: 640px; margin: 0 auto 2.4rem;
+      line-height: 1.7;
+    }
+    .hero-cta {
+      display: inline-flex; gap: 1rem; flex-wrap: wrap; justify-content: center;
+    }
+    .btn {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: .82rem; letter-spacing: 1.5px;
+      padding: .7rem 1.8rem; border-radius: 3px;
+      text-decoration: none; cursor: pointer;
+      transition: all .3s; border: 1px solid;
+      text-transform: uppercase;
+    }
+    .btn-primary {
+      background: var(--cyan); color: #000;
+      border-color: var(--cyan);
+      box-shadow: 0 0 24px rgba(0,245,255,.4);
+    }
+    .btn-primary:hover {
+      background: transparent; color: var(--cyan);
+      box-shadow: 0 0 40px rgba(0,245,255,.6);
+    }
+    .btn-outline {
+      background: transparent; color: var(--cyan);
+      border-color: var(--border);
+    }
+    .btn-outline:hover {
+      border-color: var(--cyan);
+      box-shadow: 0 0 20px rgba(0,245,255,.3);
+    }
+    .hero-scroll {
+      position: absolute; bottom: 2rem; left: 50%;
+      transform: translateX(-50%);
+      display: flex; flex-direction: column; align-items: center;
+      gap: .4rem; color: var(--text-dim);
+      font-family: 'Share Tech Mono', monospace; font-size: .65rem;
+      letter-spacing: 2px; animation: bounce 2s infinite;
+    }
+    .hero-scroll svg { width: 20px; }
+    @keyframes bounce {
+      0%,100% { transform: translateX(-50%) translateY(0); }
+      50%      { transform: translateX(-50%) translateY(6px); }
+    }
+
+    /* ── SECTIONS ── */
+    section { padding: 5rem 2rem; }
+    .container { max-width: 1100px; margin: 0 auto; }
+
+    .section-label {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: .7rem; letter-spacing: 4px;
+      color: var(--cyan); text-transform: uppercase;
+      margin-bottom: .6rem;
+    }
+    .section-title {
+      font-family: 'Orbitron', monospace;
+      font-weight: 700;
+      font-size: clamp(1.5rem, 4vw, 2.5rem);
+      margin-bottom: 1rem;
+      line-height: 1.2;
+    }
+    .section-desc {
+      color: #7aa0c0; font-weight: 300;
+      font-size: 1.05rem; line-height: 1.8;
+      max-width: 700px;
+    }
+
+    /* ── WHAT IS FT ── */
+    #intro { background: var(--bg2); }
+    .intro-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 3rem; align-items: center;
+      margin-top: 3rem;
+    }
+    @media(max-width:768px){ .intro-grid { grid-template-columns: 1fr; } }
+    .intro-text p {
+      font-size: 1rem; line-height: 1.9;
+      color: #a0c0dc; margin-bottom: 1rem;
+    }
+    .formula-box {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 8px; padding: 1.8rem;
+      text-align: center;
+      box-shadow: inset 0 0 40px rgba(0,245,255,.04), var(--glow);
+    }
+    .formula-box .formula {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: clamp(1rem, 2.5vw, 1.4rem);
+      color: var(--cyan);
+      line-height: 2.2;
+      white-space: pre-wrap;
+    }
+    .formula-box .formula-note {
+      font-size: .8rem; color: var(--text-dim);
+      margin-top: .8rem; font-family: 'Share Tech Mono', monospace;
+    }
+
+    /* ── INTERACTIVE WAVE BUILDER ── */
+    #demo { background: var(--bg); }
+    .demo-wrapper {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 2rem;
+      margin-top: 2.5rem;
+      box-shadow: var(--glow);
+    }
+    .demo-title {
+      font-family: 'Orbitron', monospace;
+      font-size: 1rem; color: var(--cyan);
+      margin-bottom: 1.5rem; letter-spacing: 1px;
+    }
+    #wave-canvas {
+      width: 100%; height: 200px;
+      display: block; border-radius: 6px;
+      background: #010810;
+      border: 1px solid rgba(0,245,255,.1);
+    }
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px,1fr));
+      gap: 1.2rem; margin-top: 1.5rem;
+    }
+    .control-group label {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: .75rem; color: var(--text-dim);
+      display: flex; justify-content: space-between;
+      margin-bottom: .4rem;
+    }
+    .control-group label span { color: var(--cyan); }
+    input[type=range] {
+      width: 100%; cursor: pointer;
+      -webkit-appearance: none; height: 4px;
+      background: var(--bg2);
+      border-radius: 2px; outline: none;
+      transition: background .3s;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      background: var(--cyan);
+      box-shadow: 0 0 8px var(--cyan);
+      cursor: pointer;
+    }
+    input[type=range]:hover { background: rgba(0,245,255,.2); }
+
+    /* ── CONCEPTS CARDS ── */
+    #concepts { background: var(--bg2); }
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem; margin-top: 3rem;
+    }
+    .card {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 8px; padding: 1.8rem;
+      position: relative; overflow: hidden;
+      cursor: default;
+      transition: transform .3s, box-shadow .3s, border-color .3s;
+    }
+    .card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+      transform: scaleX(0); transition: transform .4s;
+    }
+    .card:hover::before { transform: scaleX(1); }
+    .card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 20px 60px rgba(0,245,255,.1);
+      border-color: rgba(0,245,255,.4);
+    }
+    .card-icon {
+      width: 44px; height: 44px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 8px; margin-bottom: 1rem;
+      font-size: 1.4rem;
+    }
+    .card h3 {
+      font-family: 'Orbitron', monospace;
+      font-size: .9rem; font-weight: 700;
+      color: var(--cyan); margin-bottom: .7rem;
+      letter-spacing: .5px;
+    }
+    .card p {
+      font-size: .9rem; line-height: 1.7;
+      color: #7a9abc;
+    }
+    .card-tag {
+      display: inline-block; margin-top: 1rem;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: .65rem; letter-spacing: 1.5px;
+      padding: .2rem .6rem; border-radius: 2px;
+      border: 1px solid; text-transform: uppercase;
+    }
+
+    /* ── IMAGE PROCESSING ── */
+    #image-proc { background: var(--bg); }
+    .pipeline {
+      display: flex; align-items: center;
+      justify-content: center; flex-wrap: wrap;
+      gap: 0; margin: 3rem 0;
+    }
+    .pipe-step {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 8px; padding: 1.2rem 1.5rem;
+      text-align: center; min-width: 130px;
+      transition: all .3s; cursor: default;
+      position: relative;
+    }
+    .pipe-step:hover {
+      border-color: var(--cyan);
+      box-shadow: 0 0 20px rgba(0,245,255,.2);
+    }
+    .pipe-step .step-icon { font-size: 1.8rem; margin-bottom: .4rem; }
+    .pipe-step .step-name {
+      font-family: 'Orbitron', monospace;
+      font-size: .65rem; color: var(--cyan);
+      letter-spacing: 1px;
+    }
+    .pipe-step .step-desc {
+      font-size: .75rem; color: var(--text-dim);
+      margin-top: .3rem;
+    }
+    .pipe-arrow {
+      font-size: 1.4rem; color: var(--cyan);
+      opacity: .5; padding: 0 .4rem;
+    }
+
+    .app-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem; margin-top: 2rem;
+    }
+    .app-item {
+      background: var(--bg3);
+      border-left: 3px solid var(--cyan);
+      padding: 1.2rem 1.5rem;
+      border-radius: 0 6px 6px 0;
+      transition: all .3s;
+    }
+    .app-item:nth-child(2) { border-color: var(--magenta); }
+    .app-item:nth-child(3) { border-color: var(--electric); }
+    .app-item:nth-child(4) { border-color: var(--gold); }
+    .app-item:nth-child(5) { border-color: #00ff88; }
+    .app-item:nth-child(6) { border-color: #ff6600; }
+    .app-item:hover { transform: translateX(6px); }
+    .app-item h4 {
+      font-family: 'Orbitron', monospace;
+      font-size: .8rem; margin-bottom: .4rem;
+    }
+    .app-item p { font-size: .85rem; color: var(--text-dim); line-height: 1.6; }
+
+    /* ── FREQUENCY VISUALIZER ── */
+    #freq-viz { background: var(--bg2); }
+    .freq-wrapper {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 10px; padding: 2rem;
+      margin-top: 2.5rem;
+    }
+    #freq-canvas {
+      width: 100%; height: 240px;
+      display: block; background: #010810;
+      border-radius: 6px;
+      border: 1px solid rgba(0,245,255,.1);
+      cursor: crosshair;
+    }
+    .freq-btns {
+      display: flex; flex-wrap: wrap; gap: .8rem; margin-top: 1.2rem;
+    }
+    .freq-btn {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: .75rem; letter-spacing: 1px;
+      padding: .5rem 1.2rem; border-radius: 3px;
+      border: 1px solid var(--border);
+      background: transparent; color: var(--text-dim);
+      cursor: pointer; transition: all .3s; text-transform: uppercase;
+    }
+    .freq-btn:hover, .freq-btn.active {
+      border-color: var(--cyan); color: var(--cyan);
+      box-shadow: 0 0 12px rgba(0,245,255,.2);
+    }
+
+    /* ── VIDEO ── */
+    #video-section { background: var(--bg); }
+    .video-container {
+      position: relative; padding-bottom: 56.25%;
+      height: 0; overflow: hidden;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      box-shadow: 0 0 40px rgba(0,245,255,.15),
+                  0 0 80px rgba(123,47,255,.1);
+      margin-top: 2.5rem;
+    }
+    .video-container iframe {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%; border: 0;
+      border-radius: 10px;
+    }
+
+    /* ── MATH DEEP DIVE ── */
+    #math { background: var(--bg2); }
+    .math-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem; margin-top: 2.5rem;
+    }
+    @media(max-width:768px){ .math-grid { grid-template-columns: 1fr; } }
+    .math-box {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 8px; padding: 1.8rem;
+    }
+    .math-box h3 {
+      font-family: 'Orbitron', monospace;
+      font-size: .9rem; color: var(--magenta);
+      margin-bottom: 1rem;
+    }
+    .math-box .eq {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: clamp(.85rem, 2vw, 1rem);
+      color: var(--cyan); padding: 1rem;
+      background: rgba(0,245,255,.04);
+      border-radius: 4px; margin-bottom: .8rem;
+      line-height: 1.8; word-break: break-all;
+    }
+    .math-box p {
+      font-size: .88rem; color: var(--text-dim);
+      line-height: 1.7;
+    }
+
+    /* ── PROPERTIES TABLE ── */
+    .prop-table {
+      width: 100%; border-collapse: collapse;
+      margin-top: 2.5rem; font-size: .88rem;
+    }
+    .prop-table th {
+      font-family: 'Orbitron', monospace;
+      font-size: .72rem; letter-spacing: 1.5px;
+      color: var(--cyan); text-align: left;
+      padding: 1rem 1.2rem;
+      border-bottom: 1px solid var(--border);
+      background: rgba(0,245,255,.04);
+    }
+    .prop-table td {
+      padding: .9rem 1.2rem;
+      border-bottom: 1px solid rgba(255,255,255,.04);
+      color: #8ab0cc; vertical-align: top;
+    }
+    .prop-table tr:hover td { background: rgba(0,245,255,.03); }
+    .prop-table td:first-child {
+      font-family: 'Share Tech Mono', monospace;
+      color: var(--gold); font-size: .82rem;
+    }
+    .prop-table td:nth-child(2) { color: var(--cyan); }
+
+    /* ── FOOTER ── */
+    footer {
+      background: var(--bg2);
+      border-top: 1px solid var(--border);
+      padding: 3rem 2rem; text-align: center;
+    }
+    footer .f-logo {
+      font-family: 'Orbitron', monospace;
+      font-weight: 900; font-size: 1rem;
+      color: var(--cyan); letter-spacing: 3px;
+      text-shadow: var(--glow); margin-bottom: .8rem;
+    }
+    footer p {
+      font-size: .82rem; color: var(--text-dim);
+      font-family: 'Share Tech Mono', monospace;
+    }
+
+    /* ── PARTICLES ── */
+    #particles { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
+
+    /* ── REVEAL ANIMATION ── */
+    .reveal {
+      opacity: 0; transform: translateY(30px);
+      transition: opacity .7s ease, transform .7s ease;
+    }
+    .reveal.visible { opacity: 1; transform: none; }
+
+    /* ── GLITCH ── */
+    .glitch {
+      position: relative;
+      animation: glitch-base 4s infinite;
+    }
+    @keyframes glitch-base {
+      0%,90%,100% { text-shadow: none; }
+      92% { text-shadow: 2px 0 var(--magenta), -2px 0 var(--cyan); }
+      94% { text-shadow: -2px 0 var(--magenta), 2px 0 var(--cyan); }
+      96% { text-shadow: none; }
+    }
+
+    /* ── PROGRESS BAR ── */
+    #progress-bar {
+      position: fixed; top: 60px; left: 0;
+      height: 2px; background: var(--cyan);
+      box-shadow: 0 0 8px var(--cyan);
+      z-index: 998; width: 0%;
+      transition: width .1s;
+    }
+
+    /* ── TOOLTIP ── */
+    .tip {
+      position: relative; cursor: help;
+      border-bottom: 1px dashed var(--cyan);
+      color: var(--cyan);
+    }
+    .tip::after {
+      content: attr(data-tip);
+      position: absolute; bottom: 125%; left: 50%;
+      transform: translateX(-50%);
+      background: var(--bg3); color: var(--text);
+      font-size: .75rem; padding: .5rem .8rem;
+      border-radius: 4px; border: 1px solid var(--border);
+      white-space: nowrap; pointer-events: none;
+      opacity: 0; transition: opacity .3s;
+      font-style: normal; z-index: 100;
+    }
+    .tip:hover::after { opacity: 1; }
+  </style>
+</head>
+<body>
+
+<!-- PARTICLES -->
+<canvas id="particles"></canvas>
+
+<!-- PROGRESS BAR -->
+<div id="progress-bar"></div>
+
+<!-- NAV -->
+<nav>
+  <div class="logo">⟨ FOURIER · FO21 ⟩</div>
+  <ul>
+    <li><a href="#intro">Basics</a></li>
+    <li><a href="#demo">Demo</a></li>
+    <li><a href="#concepts">Concepts</a></li>
+    <li><a href="#image-proc">Imaging</a></li>
+    <li><a href="#freq-viz">Visualizer</a></li>
+    <li><a href="#video-section">Video</a></li>
+    <li><a href="#math">Math</a></li>
+  </ul>
+</nav>
+
+<!-- ══════════════ HERO ══════════════ -->
+<section class="hero" id="hero">
+  <div class="hero-bg" id="hero-bg"></div>
+  <div class="hero-overlay"></div>
+  <canvas id="hero-canvas"></canvas>
+
+  <div class="hero-content">
+    <div class="hero-badge">Image Signal Processing · FO21 Batch</div>
+    <h1 class="glitch">Fourier<br>Transform</h1>
+    <p class="hero-sub">
+      Decompose any signal into its pure frequency components —
+      the mathematical lens that reveals the hidden spectrum of every image.
+    </p>
+    <div class="hero-cta">
+      <a href="#intro" class="btn btn-primary">Explore Theory</a>
+      <a href="#video-section" class="btn btn-outline">Watch Video</a>
+    </div>
+  </div>
+
+  <div class="hero-scroll">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M12 5v14M5 12l7 7 7-7"/>
+    </svg>
+    SCROLL
+  </div>
+</section>
+
+<!-- ══════════════ INTRO ══════════════ -->
+<section id="intro">
+  <div class="container">
+    <p class="section-label reveal">01 · Fundamentals</p>
+    <h2 class="section-title reveal">What is the <span style="color:var(--cyan)">Fourier Transform?</span></h2>
+    <p class="section-desc reveal">
+      The Fourier Transform (FT) is a powerful mathematical operation that converts a signal
+      from the <span class="tip" data-tip="How signal changes over space/time">spatial/time domain</span>
+      into the <span class="tip" data-tip="Shows frequency content of signal">frequency domain</span> —
+      revealing which frequencies make up any complex waveform.
+    </p>
+
+    <div class="intro-grid">
+      <div class="intro-text reveal">
+        <p>
+          Proposed by Jean-Baptiste Joseph Fourier (1807), the transform states that
+          <strong style="color:#ccc">any periodic signal can be expressed as a sum of sinusoids</strong>
+          of different frequencies, amplitudes, and phases.
+        </p>
+        <p>
+          In <strong style="color:var(--cyan)">image processing</strong>, a 2D image is treated as a
+          2D signal. The 2D Fourier Transform decomposes this image into spatial frequency
+          components — enabling filtering, compression, restoration, and feature extraction
+          in ways impossible in the spatial domain.
+        </p>
+        <p>
+          The <strong style="color:var(--magenta)">magnitude spectrum</strong> reveals the strength of
+          each frequency; the <strong style="color:var(--gold)">phase spectrum</strong> encodes
+          structural information — together they fully describe any image.
+        </p>
+      </div>
+      <div class="formula-box reveal">
+        <div class="formula">F(u,v) = ΣΣ f(x,y) ·
+e^(−j2π(ux/M + vy/N))</div>
+        <div class="formula-note">
+          ─── 2D Discrete Fourier Transform ───<br><br>
+          f(x,y)  →  Spatial domain image<br>
+          F(u,v)  →  Frequency domain representation<br>
+          M, N    →  Image dimensions<br>
+          u, v    →  Frequency variables
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ INTERACTIVE WAVE DEMO ══════════════ -->
+<section id="demo">
+  <div class="container">
+    <p class="section-label reveal">02 · Interactive Demo</p>
+    <h2 class="section-title reveal">Build Your Own <span style="color:var(--cyan)">Signal</span></h2>
+    <p class="section-desc reveal">
+      Add sine waves of different frequencies and watch them combine into a complex signal —
+      exactly how the Fourier Transform decomposes images into frequency components.
+    </p>
+
+    <div class="demo-wrapper reveal">
+      <div class="demo-title">⟨ WAVE SYNTHESIZER ⟩</div>
+      <canvas id="wave-canvas" width="1000" height="200"></canvas>
+      <div class="controls">
+        <div class="control-group">
+          <label>Frequency 1 <span id="f1-val">1</span> Hz</label>
+          <input type="range" id="f1" min="1" max="20" value="1" step="0.5"/>
+        </div>
+        <div class="control-group">
+          <label>Amplitude 1 <span id="a1-val">1.0</span></label>
+          <input type="range" id="a1" min="0" max="2" value="1" step="0.1"/>
+        </div>
+        <div class="control-group">
+          <label>Frequency 2 <span id="f2-val">3</span> Hz</label>
+          <input type="range" id="f2" min="1" max="20" value="3" step="0.5"/>
+        </div>
+        <div class="control-group">
+          <label>Amplitude 2 <span id="a2-val">0.5</span></label>
+          <input type="range" id="a2" min="0" max="2" value="0.5" step="0.1"/>
+        </div>
+        <div class="control-group">
+          <label>Frequency 3 <span id="f3-val">7</span> Hz</label>
+          <input type="range" id="f3" min="1" max="20" value="7" step="0.5"/>
+        </div>
+        <div class="control-group">
+          <label>Amplitude 3 <span id="a3-val">0.3</span></label>
+          <input type="range" id="a3" min="0" max="2" value="0.3" step="0.1"/>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ CONCEPTS ══════════════ -->
+<section id="concepts">
+  <div class="container">
+    <p class="section-label reveal">03 · Core Concepts</p>
+    <h2 class="section-title reveal">Key <span style="color:var(--cyan)">Building Blocks</span></h2>
+    <p class="section-desc reveal">
+      Understanding these fundamental concepts is essential for mastering Fourier analysis in image processing.
+    </p>
+
+    <div class="cards-grid">
+      <div class="card reveal">
+        <div class="card-icon" style="background:rgba(0,245,255,.08)">🌊</div>
+        <h3>Sinusoidal Basis Functions</h3>
+        <p>Any signal can be expressed as a weighted sum of sine and cosine waves. These sinusoids form an orthogonal basis for signal decomposition.</p>
+        <span class="card-tag" style="color:var(--cyan); border-color:rgba(0,245,255,.3)">Foundation</span>
+      </div>
+      <div class="card reveal">
+        <div class="card-icon" style="background:rgba(255,0,170,.08)">📊</div>
+        <h3>Magnitude Spectrum</h3>
+        <p>|F(u,v)| represents the strength of each frequency component. Low frequencies near the center correspond to smooth regions; high frequencies to edges and details.</p>
+        <span class="card-tag" style="color:var(--magenta); border-color:rgba(255,0,170,.3)">Amplitude</span>
+      </div>
+      <div class="card reveal">
+        <div class="card-icon" style="background:rgba(123,47,255,.08)">⚡</div>
+        <h3>Phase Spectrum</h3>
+        <p>∠F(u,v) encodes the positional structure of features. Phase carries most structural information — losing phase destroys image structure even if magnitude is preserved.</p>
+        <span class="card-tag" style="color:var(--electric); border-color:rgba(123,47,255,.3)">Structure</span>
+      </div>
+      <div class="card reveal">
+        <div class="card-icon" style="background:rgba(255,215,0,.08)">⚙️</div>
+        <h3>Convolution Theorem</h3>
+        <p>Convolution in the spatial domain equals multiplication in the frequency domain. This reduces expensive O(n²) convolutions to fast O(n log n) FFT multiplications.</p>
+        <span class="card-tag" style="color:var(--gold); border-color:rgba(255,215,0,.3)">Efficiency</span>
+      </div>
+      <div class="card reveal">
+        <div class="card-icon" style="background:rgba(0,255,136,.08)">🚀</div>
+        <h3>Fast Fourier Transform</h3>
+        <p>The FFT (Cooley-Tukey, 1965) reduces computation from O(N²) to O(N log N), making real-time frequency-domain image processing possible even for large images.</p>
+        <span class="card-tag" style="color:#00ff88; border-color:rgba(0,255,136,.3)">Algorithm</span>
+      </div>
+      <div class="card reveal">
+        <div class="card-icon" style="background:rgba(255,102,0,.08)">🔄</div>
+        <h3>Inverse FT (IFT)</h3>
+        <p>The IFT reconstructs the spatial image from its frequency components. After filtering in the frequency domain, IFT brings the result back to the image domain.</p>
+        <span class="card-tag" style="color:#ff6600; border-color:rgba(255,102,0,.3)">Reconstruction</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ IMAGE PROCESSING ══════════════ -->
+<section id="image-proc">
+  <div class="container">
+    <p class="section-label reveal">04 · Applications</p>
+    <h2 class="section-title reveal">FT in <span style="color:var(--cyan)">Image Processing</span></h2>
+    <p class="section-desc reveal">
+      The frequency domain gives us unprecedented control over image content.
+      Here's the typical pipeline and key applications.
+    </p>
+
+    <div class="pipeline reveal">
+      <div class="pipe-step">
+        <div class="step-icon">🖼️</div>
+        <div class="step-name">Input Image</div>
+        <div class="step-desc">f(x,y)</div>
+      </div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step">
+        <div class="step-icon">🔢</div>
+        <div class="step-name">2D FFT</div>
+        <div class="step-desc">Spatial→Freq</div>
+      </div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step">
+        <div class="step-icon">⚡</div>
+        <div class="step-name">Apply Filter</div>
+        <div class="step-desc">H(u,v)·F(u,v)</div>
+      </div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step">
+        <div class="step-icon">🔄</div>
+        <div class="step-name">IFFT</div>
+        <div class="step-desc">Freq→Spatial</div>
+      </div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step">
+        <div class="step-icon">✅</div>
+        <div class="step-name">Output Image</div>
+        <div class="step-desc">g(x,y)</div>
+      </div>
+    </div>
+
+    <div class="app-grid">
+      <div class="app-item reveal">
+        <h4 style="color:var(--cyan)">🔵 Low-Pass Filtering</h4>
+        <p>Passes low frequencies, blocks high frequencies. Removes noise and fine detail — produces blurring/smoothing effect. Used in Gaussian blur.</p>
+      </div>
+      <div class="app-item reveal">
+        <h4 style="color:var(--magenta)">🔴 High-Pass Filtering</h4>
+        <p>Passes high frequencies, removes low. Enhances edges and fine structures. Basis for sharpening filters and edge detectors like Sobel.</p>
+      </div>
+      <div class="app-item reveal">
+        <h4 style="color:var(--electric)">🟣 Band-Pass Filtering</h4>
+        <p>Selects a specific range of frequencies. Isolates textures at a particular scale. Useful for detecting periodic patterns and noise removal.</p>
+      </div>
+      <div class="app-item reveal">
+        <h4 style="color:var(--gold)">🟡 Image Compression</h4>
+        <p>JPEG compression uses DCT (Discrete Cosine Transform — related to FT). Discards high-frequency coefficients that the human eye is less sensitive to.</p>
+      </div>
+      <div class="app-item reveal">
+        <h4 style="color:#00ff88">🟢 Image Restoration</h4>
+        <p>Wiener filter and blind deconvolution work in the frequency domain to remove motion blur, out-of-focus degradation, and systematic distortions.</p>
+      </div>
+      <div class="app-item reveal">
+        <h4 style="color:#ff6600">🟠 Texture Analysis</h4>
+        <p>Frequency domain reveals repeating texture patterns. Used in medical imaging (MRI, CT reconstruction), fabric inspection, and remote sensing.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ FREQUENCY VISUALIZER ══════════════ -->
+<section id="freq-viz">
+  <div class="container">
+    <p class="section-label reveal">05 · Live Visualizer</p>
+    <h2 class="section-title reveal">Frequency Domain <span style="color:var(--cyan)">Spectrum</span></h2>
+    <p class="section-desc reveal">
+      Visualize different frequency domain patterns. Select a filter type to see how it masks
+      the spectrum — directly controlling which image content passes through.
+    </p>
+
+    <div class="freq-wrapper reveal">
+      <canvas id="freq-canvas" width="1000" height="240"></canvas>
+      <div class="freq-btns">
+        <button class="freq-btn active" data-mode="full">Full Spectrum</button>
+        <button class="freq-btn" data-mode="lowpass">Low-Pass Filter</button>
+        <button class="freq-btn" data-mode="highpass">High-Pass Filter</button>
+        <button class="freq-btn" data-mode="bandpass">Band-Pass Filter</button>
+        <button class="freq-btn" data-mode="notch">Notch Filter</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ VIDEO ══════════════ -->
+<section id="video-section">
+  <div class="container">
+    <p class="section-label reveal">06 · Learn by Watching</p>
+    <h2 class="section-title reveal">Best Explanation for <span style="color:var(--cyan)">Beginners</span></h2>
+    <p class="section-desc reveal">
+      This video provides an intuitive visual explanation of the Fourier Transform —
+      highly recommended before diving into the mathematical formulations.
+    </p>
+
+    <div class="video-container reveal">
+      <iframe
+        src="https://www.youtube.com/embed/PcYFnVBS_bg"
+        title="Fourier Transform Best Explanation (for Beginners)"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        referrerpolicy="strict-origin-when-cross-origin"
+        allowfullscreen>
+      </iframe>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ MATH ══════════════ -->
+<section id="math">
+  <div class="container">
+    <p class="section-label reveal">07 · Mathematics</p>
+    <h2 class="section-title reveal">The <span style="color:var(--cyan)">Mathematical</span> Framework</h2>
+    <p class="section-desc reveal">
+      Core equations every signal processing engineer must know. Hover over the formula boxes for details.
+    </p>
+
+    <div class="math-grid">
+      <div class="math-box reveal">
+        <h3>Continuous FT (CFT)</h3>
+        <div class="eq">F(ω) = ∫₋∞^∞ f(t) · e^(−jωt) dt</div>
+        <p>The continuous FT transforms an infinite-duration analog signal f(t) into its frequency spectrum F(ω). The complex exponential e^(−jωt) = cos(ωt) − j·sin(ωt) extracts each frequency component.</p>
+      </div>
+      <div class="math-box reveal">
+        <h3>Inverse FT (IFT)</h3>
+        <div class="eq">f(t) = (1/2π) ∫₋∞^∞ F(ω) · e^(jωt) dω</div>
+        <p>The IFT reconstructs the original signal from its spectrum. Both transforms are perfect inverses — no information is lost in the round trip from spatial to frequency domain and back.</p>
+      </div>
+      <div class="math-box reveal">
+        <h3>2D Discrete FT (DFT)</h3>
+        <div class="eq">F(u,v) = Σₓ Σᵧ f(x,y) ·
+  e^(−j2π(ux/M+vy/N))</div>
+        <p>For M×N images, this decomposes f(x,y) into frequency components F(u,v). Each (u,v) corresponds to a spatial frequency — u horizontal, v vertical — with magnitude and phase.</p>
+      </div>
+      <div class="math-box reveal">
+        <h3>2D Inverse DFT</h3>
+        <div class="eq">f(x,y) = (1/MN) Σᵤ Σᵥ F(u,v) ·
+  e^(j2π(ux/M+vy/N))</div>
+        <p>Reconstructs the spatial image from frequency coefficients. After applying a frequency-domain filter H(u,v), this recovers the filtered image g(x,y) = IDFT{H(u,v)·F(u,v)}.</p>
+      </div>
+    </div>
+
+    <table class="prop-table reveal">
+      <thead>
+        <tr>
+          <th>Property</th>
+          <th>Mathematical Form</th>
+          <th>Significance in Image Processing</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Linearity</td>
+          <td>FT{af+bg} = aF+bG</td>
+          <td>Superposition holds — combined images combine spectra</td>
+        </tr>
+        <tr>
+          <td>Convolution</td>
+          <td>f*g ↔ F·G</td>
+          <td>Spatial filtering = frequency multiplication (O(N log N))</td>
+        </tr>
+        <tr>
+          <td>Shift</td>
+          <td>f(x−x₀) ↔ e^(−j2πux₀/M)F(u)</td>
+          <td>Spatial shift = phase shift only; magnitude unchanged</td>
+        </tr>
+        <tr>
+          <td>Scaling</td>
+          <td>f(ax) ↔ (1/|a|)F(u/a)</td>
+          <td>Compression in space = expansion in frequency (uncertainty)</td>
+        </tr>
+        <tr>
+          <td>Parseval's Theorem</td>
+          <td>ΣΣ|f|² = (1/MN)ΣΣ|F|²</td>
+          <td>Energy is conserved between spatial and frequency domains</td>
+        </tr>
+        <tr>
+          <td>Separability</td>
+          <td>FT{f(x)g(y)} = F(u)G(v)</td>
+          <td>2D DFT = two 1D DFTs (rows then columns) — enables fast computation</td>
+        </tr>
+        <tr>
+          <td>Conjugate Symmetry</td>
+          <td>F(u,v) = F*(−u,−v)</td>
+          <td>For real images, spectrum has Hermitian symmetry — halves storage</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="f-logo">⟨ FOURIER TRANSFORM · FO21 BATCH ⟩</div>
+  <p>Image Signal Processing · Fundamentals of Fourier Analysis</p>
+  <p style="margin-top:.5rem; color:#2a4060">
+    Built for educational purposes · All mathematical content is academically verified
+  </p>
+</footer>
+
+<!-- ══════════════════════════════════════════
+     JAVASCRIPT
+═══════════════════════════════════════════ -->
+<script>
+// ──────────────── PARTICLES ────────────────
+(function() {
+  const canvas = document.getElementById('particles');
+  const ctx = canvas.getContext('2d');
+  let W, H, particles = [];
+
+  function resize() {
+    W = canvas.width  = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  class Particle {
+    constructor() { this.reset(); }
+    reset() {
+      this.x  = Math.random() * W;
+      this.y  = Math.random() * H;
+      this.r  = Math.random() * 1.2 + .2;
+      this.vx = (Math.random() - .5) * .3;
+      this.vy = (Math.random() - .5) * .3;
+      this.a  = Math.random() * .5 + .1;
+      this.hue = Math.random() < .5 ? 185 : 300;
+    }
+    update() {
+      this.x += this.vx; this.y += this.vy;
+      if (this.x < 0 || this.x > W || this.y < 0 || this.y > H) this.reset();
+    }
+    draw() {
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.r, 0, Math.PI*2);
+      ctx.fillStyle = `hsla(${this.hue},100%,70%,${this.a})`;
+      ctx.fill();
+    }
+  }
+
+  for (let i = 0; i < 120; i++) particles.push(new Particle());
+
+  function animParticles() {
+    ctx.clearRect(0, 0, W, H);
+    particles.forEach(p => { p.update(); p.draw(); });
+    requestAnimationFrame(animParticles);
+  }
+  animParticles();
+})();
+
+// ──────────────── HERO CANVAS WAVES ────────────────
+(function() {
+  const canvas = document.getElementById('hero-canvas');
+  const ctx = canvas.getContext('2d');
+  let t = 0;
+
+  function resize() {
+    canvas.width  = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  function drawHeroWaves() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const W = canvas.width, H = canvas.height;
+    const mid = H / 2;
+
+    // Draw multiple overlapping frequency waves
+    const waves = [
+      { freq: 2,  amp: 40,  color: 'rgba(0,245,255,0.4)',  phase: 0 },
+      { freq: 5,  amp: 25,  color: 'rgba(255,0,170,0.3)',  phase: 1 },
+      { freq: 9,  amp: 15,  color: 'rgba(123,47,255,0.3)', phase: 2 },
+      { freq: 13, amp: 8,   color: 'rgba(255,215,0,0.25)', phase: 3 },
+      { freq: 20, amp: 5,   color: 'rgba(0,255,136,0.2)',  phase: 4 },
+    ];
+
+    waves.forEach(w => {
+      ctx.beginPath();
+      for (let x = 0; x <= W; x++) {
+        const y = mid + w.amp * Math.sin((x / W) * w.freq * Math.PI * 2 + t + w.phase);
+        x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      ctx.strokeStyle = w.color;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    });
+
+    // Composite sum wave
+    ctx.beginPath();
+    for (let x = 0; x <= W; x++) {
+      let y = mid;
+      waves.forEach(w => {
+        y += w.amp * .5 * Math.sin((x / W) * w.freq * Math.PI * 2 + t + w.phase);
+      });
+      x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    t += 0.012;
+    requestAnimationFrame(drawHeroWaves);
+  }
+  drawHeroWaves();
+
+  // Parallax
+  setTimeout(() => {
+    document.getElementById('hero-bg').classList.add('parallax-ready');
+  }, 100);
+
+  window.addEventListener('scroll', () => {
+    const scrollY = window.scrollY;
+    const heroBg = document.getElementById('hero-bg');
+    heroBg.style.transform = `translateY(${scrollY * 0.35}px) scale(1.04)`;
+  });
+})();
+
+// ──────────────── WAVE SYNTHESIZER ────────────────
+(function() {
+  const canvas = document.getElementById('wave-canvas');
+  const ctx = canvas.getContext('2d');
+  let t = 0;
+
+  const sliders = {
+    f1: document.getElementById('f1'), a1: document.getElementById('a1'),
+    f2: document.getElementById('f2'), a2: document.getElementById('a2'),
+    f3: document.getElementById('f3'), a3: document.getElementById('a3'),
+  };
+  const vals = {
+    'f1': document.getElementById('f1-val'), 'a1': document.getElementById('a1-val'),
+    'f2': document.getElementById('f2-val'), 'a2': document.getElementById('a2-val'),
+    'f3': document.getElementById('f3-val'), 'a3': document.getElementById('a3-val'),
+  };
+
+  Object.entries(sliders).forEach(([id, el]) => {
+    el.addEventListener('input', () => {
+      vals[id].textContent = parseFloat(el.value).toFixed(1);
+    });
+  });
+
+  function getParams() {
+    return {
+      f1: +sliders.f1.value, a1: +sliders.a1.value,
+      f2: +sliders.f2.value, a2: +sliders.a2.value,
+      f3: +sliders.f3.value, a3: +sliders.a3.value,
+    };
+  }
+
+  function drawWave() {
+    const W = canvas.width, H = canvas.height;
+    const mid = H / 2;
+    const p = getParams();
+
+    ctx.fillStyle = '#010810';
+    ctx.fillRect(0, 0, W, H);
+
+    // Grid
+    ctx.strokeStyle = 'rgba(0,245,255,0.05)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= 8; i++) {
+      const y = (i / 8) * H;
+      ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke();
+    }
+    for (let i = 0; i <= 20; i++) {
+      const x = (i / 20) * W;
+      ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke();
+    }
+
+    // Center line
+    ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(0,mid); ctx.lineTo(W,mid); ctx.stroke();
+
+    const colors = [
+      'rgba(0,245,255,0.6)',
+      'rgba(255,0,170,0.6)',
+      'rgba(123,47,255,0.6)',
+    ];
+    const waves = [
+      { f: p.f1, a: p.a1 },
+      { f: p.f2, a: p.a2 },
+      { f: p.f3, a: p.a3 },
+    ];
+
+    // Individual waves
+    waves.forEach((w, i) => {
+      ctx.beginPath();
+      for (let x = 0; x < W; x++) {
+        const y = mid + (mid * .35) * w.a * Math.sin(2 * Math.PI * w.f * (x / W) + t * w.f * .1);
+        x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      ctx.strokeStyle = colors[i];
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    });
+
+    // Composite wave
+    ctx.beginPath();
+    for (let x = 0; x < W; x++) {
+      let y = mid;
+      waves.forEach(w => {
+        y += (mid * .35) * w.a * Math.sin(2 * Math.PI * w.f * (x / W) + t * w.f * .1);
+      });
+      y = mid + (y - mid) / (waves.length * .6);
+      x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+    ctx.lineWidth = 2.5;
+    ctx.shadowColor = 'rgba(255,255,255,.3)';
+    ctx.shadowBlur = 6;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    t += 0.04;
+    requestAnimationFrame(drawWave);
+  }
+  drawWave();
+})();
+
+// ──────────────── FREQUENCY VISUALIZER ────────────────
+(function() {
+  const canvas = document.getElementById('freq-canvas');
+  const ctx = canvas.getContext('2d');
+  let mode = 'full', animT = 0;
+
+  document.querySelectorAll('.freq-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.freq-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      mode = btn.dataset.mode;
+    });
+  });
+
+  function drawFreq() {
+    const W = canvas.width, H = canvas.height;
+    const cx = W/2, cy = H/2;
+    const maxR = Math.min(cx, cy) - 20;
+
+    ctx.fillStyle = '#010810';
+    ctx.fillRect(0, 0, W, H);
+
+    // Background grid
+    ctx.strokeStyle = 'rgba(0,245,255,0.05)';
+    ctx.lineWidth = 1;
+    for (let r = maxR/5; r <= maxR; r += maxR/5) {
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.stroke();
+    }
+    ctx.beginPath(); ctx.moveTo(0,cy); ctx.lineTo(W,cy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx,0); ctx.lineTo(cx,H); ctx.stroke();
+
+    // Spectrum — generate realistic-looking 2D FFT magnitude
+    const gridR = Math.floor(maxR);
+    for (let r = 0; r <= gridR; r += 2) {
+      for (let angle = 0; angle < Math.PI * 2; angle += 0.06) {
+        const x = cx + r * Math.cos(angle);
+        const y = cy + r * Math.sin(angle);
+
+        // Simulated spectrum value — 1/f noise typical of natural images
+        const normR = r / maxR;
+        let val = Math.exp(-normR * 2.5) + Math.random() * 0.08 * (1-normR);
+
+        // Apply filter mode
+        let mask = 1;
+        if (mode === 'lowpass')  mask = normR < 0.35 ? 1 : 0;
+        if (mode === 'highpass') mask = normR > 0.35 ? 1 : 0;
+        if (mode === 'bandpass') mask = (normR > 0.25 && normR < 0.6) ? 1 : 0;
+        if (mode === 'notch') {
+          const notch = Math.abs(normR - 0.4) < 0.06;
+          mask = notch ? 0 : 1;
+        }
+
+        if (mask === 0) continue;
+
+        // Animate
+        const animated = val * (0.85 + 0.15 * Math.sin(animT + r * 0.1 + angle));
+
+        const brightness = Math.min(1, animated * 2.5);
+        let hue, sat;
+        if (normR < 0.3) { hue = 185; sat = 100; } // cyan — DC/low freq
+        else if (normR < 0.6) { hue = 270; sat = 80; } // purple — mid
+        else { hue = 300; sat = 100; } // magenta — high freq
+
+        ctx.beginPath();
+        ctx.arc(x, y, 1.5, 0, Math.PI*2);
+        ctx.fillStyle = `hsla(${hue},${sat}%,${50+brightness*50}%,${brightness*.7})`;
+        ctx.fill();
+      }
+    }
+
+    // Center DC component
+    const dcGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 22);
+    dcGrad.addColorStop(0, 'rgba(255,255,255,0.9)');
+    dcGrad.addColorStop(0.3, 'rgba(0,245,255,0.8)');
+    dcGrad.addColorStop(1, 'rgba(0,245,255,0)');
+    ctx.beginPath(); ctx.arc(cx, cy, 22, 0, Math.PI*2);
+    ctx.fillStyle = dcGrad; ctx.fill();
+
+    // Labels
+    ctx.font = '11px "Share Tech Mono"';
+    ctx.fillStyle = 'rgba(0,245,255,0.6)';
+    ctx.fillText('DC', cx+4, cy-8);
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.fillText('Low Freq', cx + maxR*.35 + 4, cy);
+    ctx.fillText('High Freq', cx + maxR*.75, cy);
+
+    // Mode label
+    const labels = {
+      full:'Full Spectrum', lowpass:'Low-Pass Filter Applied',
+      highpass:'High-Pass Filter Applied', bandpass:'Band-Pass Filter Applied',
+      notch:'Notch Filter Applied'
+    };
+    ctx.font = 'bold 13px "Share Tech Mono"';
+    ctx.fillStyle = 'rgba(0,245,255,0.8)';
+    ctx.fillText('[ ' + labels[mode] + ' ]', 14, H - 12);
+
+    animT += 0.015;
+    requestAnimationFrame(drawFreq);
+  }
+  drawFreq();
+})();
+
+// ──────────────── SCROLL REVEAL ────────────────
+(function() {
+  const obs = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('visible');
+        obs.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.12, rootMargin: '0px 0px -50px 0px' });
+
+  document.querySelectorAll('.reveal').forEach((el, i) => {
+    el.style.transitionDelay = `${(i % 6) * 0.07}s`;
+    obs.observe(el);
+  });
+})();
+
+// ──────────────── PROGRESS BAR ────────────────
+window.addEventListener('scroll', () => {
+  const doc = document.documentElement;
+  const scrolled = doc.scrollTop || document.body.scrollTop;
+  const total = doc.scrollHeight - doc.clientHeight;
+  document.getElementById('progress-bar').style.width = (scrolled / total * 100) + '%';
+});
+
+// ──────────────── NAV ACTIVE LINK ────────────────
+(function() {
+  const sections = document.querySelectorAll('section[id]');
+  const links = document.querySelectorAll('nav a');
+
+  window.addEventListener('scroll', () => {
+    let current = '';
+    sections.forEach(s => {
+      if (window.scrollY >= s.offsetTop - 120) current = s.id;
+    });
+    links.forEach(a => {
+      a.style.color = a.getAttribute('href') === '#'+current
+        ? 'var(--cyan)' : '';
+    });
+  });
+})();
+</script>
+</body>
+</html>
